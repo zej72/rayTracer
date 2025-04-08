@@ -6,6 +6,7 @@
 #include <optional>
 #include <thread>
 #include <chrono>
+#include <vector>
 
 using namespace std;
 
@@ -94,63 +95,91 @@ struct Camera {
     }
 };
 
-struct Plane {
+class SceneObject {
+public:
+    virtual bool intersect(const Ray ray, float& t) const = 0;
+    virtual ~SceneObject(){}
+};
+
+struct Plane : public SceneObject{
+public:
     Vec3 point;   // A point on the plane
     Vec3 normal;  // The normal vector of the plane
-};
 
-struct Sphere {
-    Vec3 center;
-    float radius;
-};
+    Plane(Vec3 p, Vec3 n) : point(p), normal(n) {}
 
-bool rayIntersectsPlane(const Ray ray, const Plane plane, Vec3& intersectionPoint, float& t) {
-    float denominator = ray.direction.dot(plane.normal);
+    bool intersect(const Ray ray, float& t) const override{
+        float denominator = ray.direction.dot(normal);
 
-    // If the denominator is close to zero, the ray is parallel to the plane
-    if (fabs(denominator) < 1e-6) {
-        return false; // No intersection
-    }
-
-    Vec3 difference = plane.point - ray.origin;
-    t = difference.dot(plane.normal) / denominator;
-
-    // If t is negative, the intersection point is behind the ray's origin
-    if (t < 0) {
-        return false; // No intersection
-    }
-
-    // Calculate the intersection point
-    intersectionPoint = ray.origin + ray.direction * t;
-    return true; // Intersection occurred
-}
-
-bool rayIntersectsSphere(const Ray ray, const Sphere sphere, Vec3& intersectionPoint, float& t) {
-    Vec3 oc = ray.origin - sphere.center;
-    float a = ray.direction.dot(ray.direction);
-    float b = 2.0f * oc.dot(ray.direction);
-    float c = oc.dot(oc) - sphere.radius * sphere.radius;
-    float discriminant = b * b - 4 * a * c;
-
-    if (discriminant < 0) {
-        return false; // No intersection
-    } else {
-        // Calculate the nearest intersection point
-        float t1 = (-b - std::sqrt(discriminant)) / (2.0f * a);
-        float t2 = (-b + std::sqrt(discriminant)) / (2.0f * a);
-
-        // We want the closest positive t
-        float t = (t1 > 0) ? t1 : t2;
-
-        if (t < 0) {
-            return false; // Intersection is behind the ray's origin
+        // If the denominator is close to zero, the ray is parallel to the plane
+        if (fabs(denominator) < 1e-6) {
+            return false; // No intersection
         }
 
-        // Calculate the intersection point
-        intersectionPoint = ray.origin + ray.direction * t;
-        return true; // Return the intersection point
+        Vec3 difference = point - ray.origin;
+        t = difference.dot(normal) / denominator;
+
+        // If t is negative, the intersection point is behind the ray's origin
+        if (t < 0) {
+            return false; // No intersection
+        }
+        return true; // Intersection occurred
     }
-}
+
+};
+
+struct Sphere : public SceneObject{
+public:
+    Vec3 center;
+    float radius;
+
+    Sphere(Vec3 c, float r) : center(c), radius(r){}
+
+    bool intersect(const Ray ray, float& t) const override {
+        Vec3 oc = ray.origin - center;
+        float a = ray.direction.dot(ray.direction);
+        float b = 2.0f * oc.dot(ray.direction);
+        float c = oc.dot(oc) - radius * radius;
+        float discriminant = b * b - 4 * a * c;
+
+        if (discriminant < 0.0001f) {
+            return false; // No intersection
+        } else {
+            // Calculate the nearest intersection point
+            float t1 = (-b - sqrt(discriminant)) / (2.0f * a);
+            float t2 = (-b + sqrt(discriminant)) / (2.0f * a);
+
+            // We want the closest positive t
+            float t = (t1 > 0) ? t1 : t2;
+
+            if (t < 0) {
+                return false; // Intersection is behind the ray's origin
+            }
+            return true; // Return the intersection point
+        }
+    }
+};
+
+class Scene {
+public:
+    vector<SceneObject*> objects;
+
+    bool intersect(const Ray& ray, float& closestT, Vec3& intersection_position) const {
+        closestT = std::numeric_limits<float>::max();
+        bool hit = false;
+
+        for (const auto& obj : objects) {
+            float t;
+            if (obj->intersect(ray, t) && t < closestT) {
+                closestT = t;
+                hit = true;
+                intersection_position = ray.origin + ray.direction * closestT;
+            }
+        }
+
+        return hit;
+    }
+};
 
 
 class Render{
@@ -168,33 +197,26 @@ public:
 
 
     Camera camera;
-    Plane ground;
-    Sphere sphere;
+    Scene scene;
     Vec3 sun;
 
     Render(){
         this->render = "";
         this->render.reserve(4095);
-        this->width = 88;
-        this->height = 40;
+        this->width = 96;
+        this->height = 46;
         this->pixel_values = {
             {0, " "},
             {1, "-"},
-            {2, ":"},
-            {3, "/"},
-            {4, "["},
-            {5, "U"},
-            {6, "8"},
-            {7, "%"},
-            {8, "M"},
-            {9, "@"}
+            {2, "/"},
+            {3, "|"},
+            {4, "\\"}
         };
-
         this->skip_cout = false;
-
         this->frame_count = 0;
-        this->ground = {{0, 0, 0}, {0, 1, 0}};
-        this->sphere = {{3,2,0}, 2};
+
+        this->scene.objects.push_back( new Sphere({3,2,0}, 2) );
+        this->scene.objects.push_back( new Plane({0,0,0},{0,1,0}));
         this->sun = {1,3,0};
 
         this->camera.position = {0, 1.7, 0};
@@ -245,54 +267,42 @@ public:
         bool ray_collided;
         float distance;
 
-        this->bufferClear();
+        chrono::steady_clock::time_point begin = chrono::steady_clock::now();
 
-        chrono::steady_clock::time_point begin_rtx = chrono::steady_clock::now();
+        this->bufferClear();
 
         for(int y = 0 ; y < this->height; ++y) {
             for(int x = 0; x < this->width*2; ++x) {
+                // main render code. edit to your liking C:
                 color = 0;
 
                 ray = this->camera.getRay((float)x/2.0f, y, this->width, this->height);
 
-                ray_collided = rayIntersectsPlane(ray, ground, intersection_position, distance);
+                ray_collided = this->scene.intersect(ray, distance, intersection_position);
                 if (ray_collided){
                     color = round(10-ceil(distance));
                     color += 1;
                     color = clamp(color, 1, 4);
                     sub_ray = {intersection_position,this->sun};
+                    ray_collided = this->scene.intersect(sub_ray, distance, intersection_position);
+                    if (ray_collided){color -= 1;}
                 }
 
-                ray_collided = rayIntersectsSphere(ray, this->sphere, intersection_position, distance);
-                if(ray_collided){
-                    color = 4;
-                    sub_ray = {intersection_position, this->sun};
-                }
-
-                bool add_shadows = color != 0 && rayIntersectsSphere(sub_ray, this->sphere, intersection_position, distance);
-                if (add_shadows){
-                    //shadow = 1 - round(distance);
-                    color = 0;
-                }
 
                 this->bufferDraw(color);
             }
             this->bufferNextLine();
         }
 
-        chrono::steady_clock::time_point end_rtx = chrono::steady_clock::now();
-        chrono::steady_clock::time_point begin = chrono::steady_clock::now();
         this->present();
         chrono::steady_clock::time_point end = chrono::steady_clock::now();
         this->render_time = chrono::duration_cast<chrono::nanoseconds> (end - begin).count() / 1000000.0;
-        this->rtx_render_time = chrono::duration_cast<chrono::nanoseconds> (end_rtx - begin_rtx).count() / 1000000.0;
         this->frame_count++;
     }
 
     void mainLoop(){
         while (true){
             //this->camera.rotate(0.1,0);
-            this->sphere.center.z = sin((float)this->frame_count/100.0f);
             this->main();
             cout << "camera y rotation: " << this->camera.direction.y << "";
             cout << " / fov: " << this->camera.fov;

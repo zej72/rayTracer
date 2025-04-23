@@ -10,6 +10,9 @@
 
 using namespace std;
 
+#include "pixel_values.cpp"
+extern unordered_map<int, string> ext_pixel_value;
+
 struct Vec3 {
     float x, y, z;
 
@@ -120,7 +123,7 @@ public:
         t = difference.dot(normal) / denominator;
 
         // If t is negative, the intersection point is behind the ray's origin
-        if (t < 0) {
+        if (t < 0.001f) {
             return false; // No intersection
         }
         return true; // Intersection occurred
@@ -142,7 +145,7 @@ public:
         float c = oc.dot(oc) - radius * radius;
         float discriminant = b * b - 4 * a * c;
 
-        if (discriminant < 0.0001f) {
+        if (discriminant < 0) {
             return false; // No intersection
         } else {
             // Calculate the nearest intersection point
@@ -205,17 +208,11 @@ public:
         this->render.reserve(4095);
         this->width = 96;
         this->height = 46;
-        this->pixel_values = {
-            {0, " "},
-            {1, "-"},
-            {2, "/"},
-            {3, "|"},
-            {4, "\\"}
-        };
+        this->pixel_values = ext_pixel_value;
         this->skip_cout = false;
         this->frame_count = 0;
 
-        this->scene.objects.push_back( new Sphere({3,2,0}, 2) );
+        this->scene.objects.push_back( new Sphere({3,2,0}, 2));
         this->scene.objects.push_back( new Plane({0,0,0},{0,1,0}));
         this->sun = {1,3,0};
 
@@ -228,7 +225,7 @@ public:
     }
 
     void bufferDraw(int value){
-        string pixel = this->pixel_values[clamp(value, 0, 4)];
+        string pixel = this->pixel_values[clamp(value, 0, 91)];
         this->render += pixel;
     }
 
@@ -280,12 +277,12 @@ public:
 
                 ray_collided = this->scene.intersect(ray, distance, intersection_position);
                 if (ray_collided){
-                    color = round(10-ceil(distance));
-                    color += 1;
-                    color = clamp(color, 1, 4);
-                    sub_ray = {intersection_position,this->sun};
-                    ray_collided = this->scene.intersect(sub_ray, distance, intersection_position);
-                    if (ray_collided){color -= 1;}
+                    color = round(9-ceil(distance));
+                    color = clamp(color, 1, 91);
+                    sub_ray = {intersection_position, this->sun};
+                    if (this->scene.intersect(sub_ray, distance, intersection_position)){
+                        color = 0;
+                    }
                 }
 
 
@@ -302,7 +299,7 @@ public:
 
     void mainLoop(){
         while (true){
-            //this->camera.rotate(0.1,0);
+            this->camera.position.z = sin((float)this->frame_count/50.0f);
             this->main();
             cout << "camera y rotation: " << this->camera.direction.y << "";
             cout << " / fov: " << this->camera.fov;

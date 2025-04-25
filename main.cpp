@@ -44,6 +44,13 @@ struct Vec3 {
             x * other.y - y * other.x
         };
     }
+
+    float distance(const Vec3& other) const {
+        return sqrt(
+            pow(x - other.x, 2) +
+            pow(y - other.y, 2) +
+            pow(z - other.z, 2));
+    }
 };
 
 struct Ray {
@@ -124,9 +131,9 @@ public:
 
         // If t is negative, the intersection point is behind the ray's origin
         if (t < 0.001f) {
-            return false; // No intersection
+            return false;
         }
-        return true; // Intersection occurred
+        return true;
     }
 
 };
@@ -148,17 +155,16 @@ public:
         if (discriminant < 0) {
             return false; // No intersection
         } else {
-            // Calculate the nearest intersection point
             float t1 = (-b - sqrt(discriminant)) / (2.0f * a);
             float t2 = (-b + sqrt(discriminant)) / (2.0f * a);
 
-            // We want the closest positive t
-            float t = (t1 > 0) ? t1 : t2;
+            // closest positive t
+            t = (t1 > 0) ? t1 : t2;
 
-            if (t < 0) {
-                return false; // Intersection is behind the ray's origin
+            if (t < 0.01f) {
+                return false;
             }
-            return true; // Return the intersection point
+            return true;
         }
     }
 };
@@ -195,7 +201,6 @@ public:
 
     long int frame_count;
     double render_time;
-    double rtx_render_time;
     bool skip_cout;
 
 
@@ -214,7 +219,7 @@ public:
 
         this->scene.objects.push_back( new Sphere({3,2,0}, 2));
         this->scene.objects.push_back( new Plane({0,0,0},{0,1,0}));
-        this->sun = {1,3,0};
+        this->sun = {0.3,1,0};
 
         this->camera.position = {0, 1.7, 0};
         this->camera.yaw = 1;
@@ -225,7 +230,8 @@ public:
     }
 
     void bufferDraw(int value){
-        string pixel = this->pixel_values[clamp(value, 0, 91)];
+        //int max_value = this->pixel_values.size();
+        string pixel = this->pixel_values[clamp(value, 0, 4)];
         this->render += pixel;
     }
 
@@ -258,9 +264,9 @@ public:
         float ray_position;
         int color;
         int shadow;
-        Vec3 intersection_position;
+        Vec3 intersection_point;
+        Vec3 intersection_point_offset_direction;
         Ray ray;
-        Ray sub_ray;
         bool ray_collided;
         float distance;
 
@@ -275,17 +281,21 @@ public:
 
                 ray = this->camera.getRay((float)x/2.0f, y, this->width, this->height);
 
-                ray_collided = this->scene.intersect(ray, distance, intersection_position);
+                ray_collided = this->scene.intersect(ray, distance, intersection_point);
                 if (ray_collided){
-                    color = round(9-ceil(distance));
-                    color = clamp(color, 1, 91);
-                    sub_ray = {intersection_position, this->sun};
-                    if (this->scene.intersect(sub_ray, distance, intersection_position)){
+                    color = (int)round(intersection_point.z) % 2;
+                    //color = round(9-ceil(intersection_point.distance({0,0,0})));
+                    //color = clamp(color, 0, 4);
+                    color += 2;
+
+                    intersection_point_offset_direction = intersection_point + this->sun * 0.05f;
+
+                    ray = {intersection_point_offset_direction, this->sun};
+                    ray_collided = this->scene.intersect(ray, distance, intersection_point);
+                    if (ray_collided){
                         color = 0;
                     }
                 }
-
-
                 this->bufferDraw(color);
             }
             this->bufferNextLine();
@@ -299,16 +309,12 @@ public:
 
     void mainLoop(){
         while (true){
-            this->camera.position.z = sin((float)this->frame_count/50.0f);
+            this->camera.position.z = sin((double)this->frame_count / 100.0);
             this->main();
             cout << "camera y rotation: " << this->camera.direction.y << "";
             cout << " / fov: " << this->camera.fov;
-            cout << "  |  \033[1mtotal fps: " << 1000/((this->render_time + this->rtx_render_time));
-            cout << " / total render time: " << (this->render_time + this->rtx_render_time) << "ms\033[0m";
-            cout << "  |  cout fps: " << 1000/(this->render_time);
-            cout << " / cout time: " << this->render_time << "ms";
-            cout << "  |  rtx fps: " << 1000/(this->rtx_render_time) << "fps";
-            cout << " / rtx render time: " << this->rtx_render_time << "ms";
+            cout << "  |  \033[1mtotal fps: " << 1000/(this->render_time);
+            cout << " / total render time: " << this->render_time << "ms\033[0m";
         }
     }
 };
@@ -320,7 +326,7 @@ int main()
     //render.skip_cout = true;
     render.camera.rotate(0,0);
     render.mainLoop();
-    float fps = (render.rtx_render_time + render.render_time);
+    float fps = render.render_time;
     //render.screenClear();
     cout << fps << "\nyipee";
     return 0;

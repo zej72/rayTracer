@@ -51,6 +51,11 @@ struct Vec3 {
             pow(y - other.y, 2) +
             pow(z - other.z, 2));
     }
+
+    Vec3 pointTo(const Vec3& other) const {
+        Vec3 direction = other - Vec3 {x, y, z};
+        return direction.normalize();
+    }
 };
 
 struct Ray {
@@ -211,15 +216,17 @@ public:
     Render(){
         this->render = "";
         this->render.reserve(4095);
-        this->width = 96;
-        this->height = 46;
+        this->width = 96*4;
+        this->height = 46*4;
         this->pixel_values = ext_pixel_value;
         this->skip_cout = false;
         this->frame_count = 0;
 
-        this->scene.objects.push_back( new Sphere({3,2,0}, 2));
+        this->scene.objects.push_back( new Sphere({0,2,0}, 2));
+        //this->scene.objects.push_back( new Sphere({2,2,2}, 2));
         this->scene.objects.push_back( new Plane({0,0,0},{0,1,0}));
-        this->sun = {0.3,1,0};
+        this->sun = {1,1,0};
+        this->sun.normalize();
 
         this->camera.position = {0, 1.7, 0};
         this->camera.yaw = 1;
@@ -261,7 +268,6 @@ public:
     }
 
     void main(){
-        float ray_position;
         int color;
         int shadow;
         Vec3 intersection_point;
@@ -283,7 +289,8 @@ public:
 
                 ray_collided = this->scene.intersect(ray, distance, intersection_point);
                 if (ray_collided){
-                    color = (int)round(intersection_point.z) % 2;
+                    color += (int)round(intersection_point.z) % 2;
+                    color += (int)round(intersection_point.x) % 2;
                     //color = round(9-ceil(intersection_point.distance({0,0,0})));
                     //color = clamp(color, 0, 4);
                     color += 2;
@@ -293,7 +300,7 @@ public:
                     ray = {intersection_point_offset_direction, this->sun};
                     ray_collided = this->scene.intersect(ray, distance, intersection_point);
                     if (ray_collided){
-                        color = 0;
+                        color -= 1;
                     }
                 }
                 this->bufferDraw(color);
@@ -309,7 +316,9 @@ public:
 
     void mainLoop(){
         while (true){
-            this->camera.position.z = sin((double)this->frame_count / 100.0);
+            this->camera.direction = camera.position.pointTo({0,1.7,0});
+            this->camera.position.z = sin((double)this->frame_count / 300.0) * 4;
+            this->camera.position.x = cos((double)this->frame_count / 300.0) * 4;
             this->main();
             cout << "camera y rotation: " << this->camera.direction.y << "";
             cout << " / fov: " << this->camera.fov;
@@ -323,7 +332,7 @@ public:
 int main()
 {
     Render render;
-    //render.skip_cout = true;
+    render.skip_cout = false;
     render.camera.rotate(0,0);
     render.mainLoop();
     float fps = render.render_time;

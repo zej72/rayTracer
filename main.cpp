@@ -112,27 +112,32 @@ struct Camera {
 
 class SceneObject {
 public:
+    string name;
+    Vec3 position;
+    Vec3 direction;
+    float size;
     virtual bool intersect(const Ray ray, float& t) const = 0;
     virtual ~SceneObject(){}
 };
 
-struct Plane : public SceneObject{
+class Plane : public virtual SceneObject{
 public:
-    Vec3 point;   // A point on the plane
-    Vec3 normal;  // The normal vector of the plane
 
-    Plane(Vec3 p, Vec3 n) : point(p), normal(n) {}
+    Plane(Vec3 p, Vec3 n){
+        position = p;
+        direction = n;
+    }
 
     bool intersect(const Ray ray, float& t) const override{
-        float denominator = ray.direction.dot(normal);
+        float denominator = ray.direction.dot(direction);
 
         // If the denominator is close to zero, the ray is parallel to the plane
         if (fabs(denominator) < 1e-6) {
             return false; // No intersection
         }
 
-        Vec3 difference = point - ray.origin;
-        t = difference.dot(normal) / denominator;
+        Vec3 difference = position - ray.origin;
+        t = difference.dot(direction) / denominator;
 
         // If t is negative, the intersection point is behind the ray's origin
         if (t < 0.001f) {
@@ -143,18 +148,18 @@ public:
 
 };
 
-struct Sphere : public SceneObject{
+class Sphere : public virtual SceneObject{
 public:
-    Vec3 center;
-    float radius;
-
-    Sphere(Vec3 c, float r) : center(c), radius(r){}
+    Sphere(Vec3 c, float r){
+        position = c;
+        size = r;
+    }
 
     bool intersect(const Ray ray, float& t) const override {
-        Vec3 oc = ray.origin - center;
+        Vec3 oc = ray.origin - position;
         float a = ray.direction.dot(ray.direction);
         float b = 2.0f * oc.dot(ray.direction);
-        float c = oc.dot(oc) - radius * radius;
+        float c = oc.dot(oc) - pow(size, 2);
         float discriminant = b * b - 4 * a * c;
 
         if (discriminant < 0) {
@@ -215,9 +220,8 @@ public:
 
     Render(){
         this->render = "";
-        this->render.reserve(4095);
-        this->width = 96*4;
-        this->height = 46*4;
+        this->width = 98;
+        this->height = 50;
         this->pixel_values = ext_pixel_value;
         this->skip_cout = false;
         this->frame_count = 0;
@@ -316,9 +320,10 @@ public:
 
     void mainLoop(){
         while (true){
-            this->camera.direction = camera.position.pointTo({0,1.7,0});
             this->camera.position.z = sin((double)this->frame_count / 300.0) * 4;
             this->camera.position.x = cos((double)this->frame_count / 300.0) * 4;
+            this->scene.objects[0]->size = this->scene.objects[0]->position.y = sin((double)this->frame_count / 100.0) + 1;
+            this->camera.direction = camera.position.pointTo({0,1.7,0});
             this->main();
             cout << "camera y rotation: " << this->camera.direction.y << "";
             cout << " / fov: " << this->camera.fov;

@@ -32,6 +32,8 @@ public:
     float distance(const Vec3& other) const;
 
     Vec3 pointTo(const Vec3& other) const;
+
+    float angle(const Vec3& other) const;
 };
 
 
@@ -63,7 +65,7 @@ public:
     Vec3 position;
     Vec3 direction;
     float size;
-    virtual bool intersect(const Ray ray, float& t) const = 0;
+    virtual bool intersect(const Ray ray, float& t, Vec3& n) const = 0;
     virtual ~SceneObject(){}
 };
 
@@ -71,21 +73,21 @@ class Plane : public virtual SceneObject{
 public:
     Plane(Vec3 p, Vec3 n);
 
-    bool intersect(const Ray ray, float& t) const;
+    bool intersect(const Ray ray, float& t, Vec3& n) const;
 };
 
 class Sphere : public virtual SceneObject{
 public:
     Sphere(Vec3 c, float r);
 
-    bool intersect(const Ray ray, float& t) const;
+    bool intersect(const Ray ray, float& t, Vec3& n) const;
 };
 
 class Scene {
 public:
     vector<SceneObject*> objects;
 
-    bool intersect(const Ray& ray, float& closestT, Vec3& intersection_position) const;
+    bool intersect(const Ray& ray, float& closestT, Vec3& intersection_position, Vec3& normal) const;
 };
 
 class RayTracer{
@@ -112,7 +114,6 @@ public:
     void moveCursor(int x, int y);
     void present();
     void render();
-    void mainLoop();
 };
 
 #endif // RAYTRACER_H

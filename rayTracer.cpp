@@ -39,12 +39,20 @@ float Vec3::distance(const Vec3& other) const {
     return sqrt(
         pow(x - other.x, 2) +
         pow(y - other.y, 2) +
-        pow(z - other.z, 2));
+        pow(z - other.z, 2)
+        );
 }
 
 Vec3 Vec3::pointTo(const Vec3& other) const {
     Vec3 direction = other - Vec3 {x, y, z};
     return direction.normalize();
+}
+
+float Vec3::angle(const Vec3& other) const {
+    float dot = x*other.x + y*other.y + z*other.z;
+    float lenSqThis = pow(x,2) + pow(y,2) + pow(z,2);
+    float lenSqOther = pow(other.x, 2) + pow(other.y, 2) + pow(other.z, 2);
+    return acos(dot/sqrt(lenSqThis * lenSqOther));
 }
 
 
@@ -94,7 +102,7 @@ Plane::Plane(Vec3 p, Vec3 n){
     direction = n;
 }
 
-bool Plane::intersect(const Ray ray, float& t) const{
+bool Plane::intersect(const Ray ray, float& t, Vec3& n) const{
     float denominator = ray.direction.dot(direction);
 
     // If the denominator is close to zero, the ray is parallel to the plane
@@ -109,6 +117,9 @@ bool Plane::intersect(const Ray ray, float& t) const{
     if (t < 0.001f) {
         return false;
     }
+
+    n = direction;
+
     return true;
 }
 
@@ -118,12 +129,13 @@ Sphere::Sphere(Vec3 c, float r){
     size = r;
 }
 
-bool Sphere::intersect(const Ray ray, float& t) const{
+bool Sphere::intersect(const Ray ray, float& t, Vec3& n) const{
     Vec3 oc = ray.origin - position;
     float a = ray.direction.dot(ray.direction);
     float b = 2.0f * oc.dot(ray.direction);
     float c = oc.dot(oc) - pow(size, 2);
     float discriminant = b * b - 4 * a * c;
+    Vec3 collision_point;
 
     if (discriminant < 0) {
         return false; // No intersection
@@ -137,21 +149,28 @@ bool Sphere::intersect(const Ray ray, float& t) const{
         if (t < 0.01f) {
             return false;
         }
+
+        collision_point = ray.origin + ray.direction * t;
+        n = collision_point - position;
+        n.normalize();
+
         return true;
     }
 }
 
 
-bool Scene::intersect(const Ray& ray, float& closestT, Vec3& intersection_position) const {
+bool Scene::intersect(const Ray& ray, float& closestT, Vec3& intersection_position, Vec3& normal) const {
     closestT = std::numeric_limits<float>::max();
     bool hit = false;
 
     for (const auto& obj : objects) {
         float t;
-        if (obj->intersect(ray, t) && t < closestT) {
+        Vec3 n;
+        if (obj->intersect(ray, t, n) && t < closestT) {
             closestT = t;
             hit = true;
             intersection_position = ray.origin + ray.direction * closestT;
+            normal = n;
         }
     }
 
@@ -208,9 +227,9 @@ void RayTracer::present(){
 
 void RayTracer::render(){
     int color;
-    int shadow;
     Vec3 intersection_point;
     Vec3 intersection_point_offset_direction;
+    Vec3 normal;
     Ray ray;
     bool ray_collided;
     float distance;
@@ -226,20 +245,16 @@ void RayTracer::render(){
 
             ray = this->camera.getRay((float)x/2.0f, y, this->width, this->height);
 
-            ray_collided = this->scene.intersect(ray, distance, intersection_point);
+            ray_collided = this->scene.intersect(ray, distance, intersection_point, normal);
             if (ray_collided){
-                color += (int)round(intersection_point.z) % 2;
-                color += (int)round(intersection_point.x) % 2;
-                //color = round(9-ceil(intersection_point.distance({0,0,0})));
-                //color = clamp(color, 0, 4);
-                color += 2;
+                color = 4;
 
-                intersection_point_offset_direction = intersection_point + this->sun * 0.05f;
-
+                color = (int)round((float) color * cos(normal.angle(sun))); // Lambert's cosine law
+                intersection_point_offset_direction = intersection_point + this->sun * 0.05f;                
                 ray = {intersection_point_offset_direction, this->sun};
-                ray_collided = this->scene.intersect(ray, distance, intersection_point);
+                ray_collided = this->scene.intersect(ray, distance, intersection_point, normal);
                 if (ray_collided){
-                    color -= 1;
+                    color = 0;
                 }
             }
             this->bufferDraw(color);

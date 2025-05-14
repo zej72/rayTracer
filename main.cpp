@@ -13,10 +13,10 @@ int main()
 
     // add objects to scene
     rayTracer.scene.objects.push_back( new Sphere({0,2,0}, 2));
-    rayTracer.scene.objects.push_back( new Plane({0,0,0},{0,1,0}));
+    //rayTracer.scene.objects.push_back( new Plane({0,0,0},{0,1,0}));
 
     // setup light source
-    rayTracer.sun = {1,1,0};
+    rayTracer.sun = {1.5,1,0};
     rayTracer.sun.normalize();
 
     while (true){
@@ -24,7 +24,7 @@ int main()
         rayTracer.camera.position.z = sin((double)rayTracer.frame_count / 300.0) * 4;
         rayTracer.camera.position.x = cos((double)rayTracer.frame_count / 300.0) * 4;
 
-        rayTracer.scene.objects[0]->size = rayTracer.scene.objects[0]->position.y = sin((double)rayTracer.frame_count / 100.0) + 1;
+        //rayTracer.scene.objects[0]->size = rayTracer.scene.objects[0]->position.y = sin((double)rayTracer.frame_count / 100.0) + 1;
 
         rayTracer.camera.direction = rayTracer.camera.position.pointTo({0, 1.7, 0});
 

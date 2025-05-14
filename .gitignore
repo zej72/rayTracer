@@ -81,3 +81,8 @@ CMakeLists.txt.user*
 .uic/
 /build*/
 a.out
+CMakeLists.txt
+module_compiler.py
+python_module.i
+python_module_wrap.cxx
+rayTracer.py

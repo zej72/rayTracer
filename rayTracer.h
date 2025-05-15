@@ -10,6 +10,7 @@
 #include <thread>
 #include <chrono>
 #include <vector>
+#include <future>
 
 using namespace std;
 
@@ -97,6 +98,7 @@ public:
     int height;
     int width;
     unordered_map<int, string> pixel_values;
+    int thread_count;
 
     long int frame_count;
     double render_time;
@@ -114,6 +116,7 @@ public:
     void moveCursor(int x, int y);
     void present();
     void render();
+    string main(int start, int end);
 };
 
 #endif // RAYTRACER_H

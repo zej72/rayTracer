@@ -185,6 +185,7 @@ RayTracer::RayTracer(){
     this->pixel_values = ext_pixel_value;
     this->skip_cout = false;
     this->frame_count = 0;
+    this->thread_count = 1;
 
     this->camera.position = {0, 1.7, 0};
     this->camera.yaw = 1;
@@ -226,6 +227,35 @@ void RayTracer::present(){
 }
 
 void RayTracer::render(){
+    this->bufferClear();
+
+    chrono::steady_clock::time_point begin = chrono::steady_clock::now();
+
+    std::vector<std::future<string>> futures; // hold threads
+
+    // Create threads
+    for (int i = 0; i < this->thread_count; ++i) {
+        float step = this->height/this->thread_count;
+        int start = (int)round(step * i);
+        int end = (int)round(step * (i+1));
+
+        futures.push_back(std::async(std::launch::async, [this, start, end]() { return this->main(start, end); }));
+    }
+
+
+    // Retrieve results from threads
+    for (int i = 0; i < this->thread_count; ++i) {
+        this->frame += futures[i].get();
+    }
+
+    this->present();
+    this->frame_count++;
+
+    chrono::steady_clock::time_point end = chrono::steady_clock::now();
+    this->render_time = chrono::duration_cast<chrono::nanoseconds> (end - begin).count() / 1000000.0;
+}
+
+string RayTracer::main(int start, int end){
     int color;
     Vec3 intersection_point;
     Vec3 intersection_point_offset_direction;
@@ -233,12 +263,9 @@ void RayTracer::render(){
     Ray ray;
     bool ray_collided;
     float distance;
+    string buffer;
 
-    chrono::steady_clock::time_point begin = chrono::steady_clock::now();
-
-    this->bufferClear();
-
-    for(int y = 0 ; y < this->height; ++y) {
+    for(int y = start; y < end; ++y) {
         for(int x = 0; x < this->width*2; ++x) {
             // main render code. edit to your liking C:
             color = 0;
@@ -257,13 +284,9 @@ void RayTracer::render(){
                     color = 0;
                 }
             }
-            this->bufferDraw(color);
+            buffer += this->pixel_values[clamp(color,0,4)];
         }
-        this->bufferNextLine();
+        buffer += "\n";
     }
-
-    this->present();
-    chrono::steady_clock::time_point end = chrono::steady_clock::now();
-    this->render_time = chrono::duration_cast<chrono::nanoseconds> (end - begin).count() / 1000000.0;
-    this->frame_count++;
+    return buffer;
 }

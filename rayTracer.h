@@ -63,6 +63,7 @@ public:
 class SceneObject {
 public:
     string name;
+    string ANSI;
     Vec3 position;
     Vec3 direction;
     float size;
@@ -88,7 +89,7 @@ class Scene {
 public:
     vector<SceneObject*> objects;
 
-    bool intersect(const Ray& ray, float& closestT, Vec3& intersection_position, Vec3& normal) const;
+    bool intersect(const Ray& ray, float& closestT, Vec3& intersection_position, Vec3& normal, string& ANSI) const;
 };
 
 class RayTracer{

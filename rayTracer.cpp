@@ -159,7 +159,7 @@ bool Sphere::intersect(const Ray ray, float& t, Vec3& n) const{
 }
 
 
-bool Scene::intersect(const Ray& ray, float& closestT, Vec3& intersection_position, Vec3& normal) const {
+bool Scene::intersect(const Ray& ray, float& closestT, Vec3& intersection_position, Vec3& normal, string& ANSI) const {
     closestT = std::numeric_limits<float>::max();
     bool hit = false;
 
@@ -171,6 +171,7 @@ bool Scene::intersect(const Ray& ray, float& closestT, Vec3& intersection_positi
             hit = true;
             intersection_position = ray.origin + ray.direction * closestT;
             normal = n;
+            ANSI = obj->ANSI;
         }
     }
 
@@ -263,15 +264,19 @@ string RayTracer::main(int start, int end){
     bool ray_collided;
     float distance;
     string buffer;
+    string ANSI;
+    string last_ANSI;
+    string GOD_HELP;
 
     for(int y = start; y < end; ++y) {
         for(int x = 0; x < this->width*2; ++x) {
             // main render code. edit to your liking C:
             color = 0;
+            ANSI = "";
 
             ray = this->camera.getRay((float)x/2.0f, y, this->width, this->height);
 
-            ray_collided = this->scene.intersect(ray, distance, intersection_point, normal);
+            ray_collided = this->scene.intersect(ray, distance, intersection_point, normal, ANSI);
             if (ray_collided){
                 // dither effect
                 color = (x%4) + 4;
@@ -281,14 +286,28 @@ string RayTracer::main(int start, int end){
 
                 // ray trace shadows
                 ray = {intersection_point, this->sun};
-                ray_collided = this->scene.intersect(ray, distance, intersection_point, normal);
-                if (ray_collided){
+                ray_collided = this->scene.intersect(ray, distance, intersection_point, normal, GOD_HELP);
+                if (false){ // change to true for black shadows
                     color = 0;
                 }
+                else if (ray_collided && ANSI == ""){
+                    ANSI = "2";
+                }
+                else if (ray_collided){
+                    ANSI += ";2";
+                }
             }
+            if (ANSI != last_ANSI){
+                buffer += "\033[0m";
+            }
+            if (ANSI != ""){
+                buffer += "\033[" + ANSI + "m";
+            }
+            last_ANSI = ANSI;
             buffer += this->pixel_values[clamp(color,0,4)];
         }
         buffer += "\n";
     }
+    buffer += "\033[0m";
     return buffer;
 }

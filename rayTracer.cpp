@@ -83,8 +83,8 @@ Ray Camera::getRay(float x, float y, int width, int height) {
     float scale = tan(fov * 0.5f * (M_PI / 180.0f));
 
     // Calculate the ray direction based on the camera's orientation
-    Vec3 right = {direction.z, 0, -direction.x}; // Right vector
-    Vec3 up = {0, 1, 0}; // Up vector (world up)
+    Vec3 right = direction.cross(this->up).normalize(); // Right vector
+    Vec3 up = right.cross(direction).normalize();
 
     // Calculate the pixel position in normalized device coordinates
     float pixelX = (2 * (x + 0.25f) / width - 1) * aspectRatio * scale;
@@ -258,7 +258,6 @@ void RayTracer::render(){
 string RayTracer::main(int start, int end){
     int color;
     Vec3 intersection_point;
-    Vec3 intersection_point_offset_direction;
     Vec3 normal;
     Ray ray;
     bool ray_collided;
@@ -274,11 +273,14 @@ string RayTracer::main(int start, int end){
 
             ray_collided = this->scene.intersect(ray, distance, intersection_point, normal);
             if (ray_collided){
-                color = 4;
+                // dither effect
+                color = (x%4) + 4;
 
-                color = (int)round((float) color * cos(normal.angle(sun))); // Lambert's cosine law
-                intersection_point_offset_direction = intersection_point + this->sun * 0.05f;                
-                ray = {intersection_point_offset_direction, this->sun};
+                // Lambert's cosine law
+                color = (int)round((float) color * cos(normal.angle(sun)));
+
+                // ray trace shadows
+                ray = {intersection_point, this->sun};
                 ray_collided = this->scene.intersect(ray, distance, intersection_point, normal);
                 if (ray_collided){
                     color = 0;

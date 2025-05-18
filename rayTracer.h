@@ -64,6 +64,7 @@ class SceneObject {
 public:
     string name;
     string ANSI;
+    bool cast_shadow;
     Vec3 position;
     Vec3 direction;
     float size;
@@ -89,7 +90,8 @@ class Scene {
 public:
     vector<SceneObject*> objects;
 
-    bool intersect(const Ray& ray, float& closestT, Vec3& intersection_position, Vec3& normal, string& ANSI) const;
+    // ik theres better way to pass all of the arguments but i dont care
+    bool intersect(const Ray& ray, float& closestT, Vec3& intersection_position, Vec3& normal, string& ANSI, bool shadow_render) const;
 };
 
 class RayTracer{

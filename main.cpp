@@ -21,8 +21,7 @@ int main()
     rayTracer.scene.objects.push_back( new Sphere({0,0,0}, 1));
 
     // setup light source
-    rayTracer.sun = {2, 3, 0};
-    rayTracer.sun.normalize();
+    rayTracer.sun = {10, 10, 0};
 
     while (true){
         // interact with scene and camera

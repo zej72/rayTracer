@@ -100,6 +100,7 @@ Ray Camera::getRay(float x, float y, int width, int height) {
 Plane::Plane(Vec3 p, Vec3 n){
     position = p;
     direction = n;
+    cast_shadow = true;
 }
 
 bool Plane::intersect(const Ray ray, float& t, Vec3& n) const{
@@ -127,6 +128,7 @@ bool Plane::intersect(const Ray ray, float& t, Vec3& n) const{
 Sphere::Sphere(Vec3 c, float r){
     position = c;
     size = r;
+    cast_shadow = true;
 }
 
 bool Sphere::intersect(const Ray ray, float& t, Vec3& n) const{
@@ -159,14 +161,14 @@ bool Sphere::intersect(const Ray ray, float& t, Vec3& n) const{
 }
 
 
-bool Scene::intersect(const Ray& ray, float& closestT, Vec3& intersection_position, Vec3& normal, string& ANSI) const {
+bool Scene::intersect(const Ray& ray, float& closestT, Vec3& intersection_position, Vec3& normal, string& ANSI, bool shadow_render) const {
     closestT = std::numeric_limits<float>::max();
     bool hit = false;
 
     for (const auto& obj : objects) {
         float t;
         Vec3 n;
-        if (obj->intersect(ray, t, n) && t < closestT) {
+        if (obj->intersect(ray, t, n) && t < closestT && !(shadow_render && !obj->cast_shadow)) {
             closestT = t;
             hit = true;
             intersection_position = ray.origin + ray.direction * closestT;
@@ -174,7 +176,6 @@ bool Scene::intersect(const Ray& ray, float& closestT, Vec3& intersection_positi
             ANSI = obj->ANSI;
         }
     }
-
     return hit;
 }
 
@@ -267,6 +268,7 @@ string RayTracer::main(int start, int end){
     string ANSI;
     string last_ANSI;
     string GOD_HELP;
+    bool shadow;
 
     for(int y = start; y < end; ++y) {
         for(int x = 0; x < this->width*2; ++x) {
@@ -276,18 +278,20 @@ string RayTracer::main(int start, int end){
 
             ray = this->camera.getRay((float)x/2.0f, y, this->width, this->height);
 
-            ray_collided = this->scene.intersect(ray, distance, intersection_point, normal, ANSI);
+            shadow = false;
+            ray_collided = this->scene.intersect(ray, distance, intersection_point, normal, ANSI, shadow);
             if (ray_collided){
                 // dither effect
                 color = (x%4) + 4;
 
-                // Lambert's cosine law
-                color = (int)round((float) color * cos(normal.angle(sun)));
+                color = (int)round((float) color * cos(normal.angle(intersection_point.pointTo(this->sun))));
 
                 // ray trace shadows
-                ray = {intersection_point, this->sun};
-                ray_collided = this->scene.intersect(ray, distance, intersection_point, normal, GOD_HELP);
-                if (false){ // change to true for black shadows
+                shadow = true;
+                ray = {intersection_point, intersection_point.pointTo(this->sun)};
+                ray_collided = this->scene.intersect(ray, distance, intersection_point, normal, GOD_HELP, shadow);
+                ray_collided = ray.origin.distance(this->sun) > distance;
+                if (ray_collided && false){ // remove "&& false" for black shadows
                     color = 0;
                 }
                 else if (ray_collided && ANSI == ""){

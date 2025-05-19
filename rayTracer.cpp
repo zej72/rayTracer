@@ -97,9 +97,10 @@ Ray Camera::getRay(float x, float y, int width, int height) {
 
 
 
-Plane::Plane(Vec3 p, Vec3 n){
+Plane::Plane(Vec3 p, Vec3 n, float s){
     position = p;
     direction = n;
+    size = s;
     cast_shadow = true;
 }
 
@@ -118,8 +119,16 @@ bool Plane::intersect(const Ray ray, float& t, Vec3& n) const{
     if (t < 0.001f) {
         return false;
     }
+    Vec3 intersection_point = ray.origin + ray.direction * t;
+    if (intersection_point.distance(position) > size){
+        return false;
+    }
 
     n = direction;
+
+    if (difference.dot(direction) > 0) {
+        n = {-direction.x, -direction.y, -direction. z};
+    }
 
     return true;
 }
@@ -158,6 +167,44 @@ bool Sphere::intersect(const Ray ray, float& t, Vec3& n) const{
 
         return true;
     }
+}
+
+
+Ring::Ring(Vec3 c, Vec3 n, float in_s, float out_s){
+    position = c;
+    direction = n;
+    size = in_s;
+    size2 = out_s;
+}
+
+bool Ring::intersect(const Ray ray, float& t, Vec3& n) const{
+    float denominator = ray.direction.dot(direction);
+
+    // If the denominator is close to zero, the ray is parallel to the plane
+    if (fabs(denominator) < 1e-6) {
+        return false; // No intersection
+    }
+
+    Vec3 difference = position - ray.origin;
+    t = difference.dot(direction) / denominator;
+
+    // If t is negative, the intersection point is behind the ray's origin
+    if (t < 0.001f) {
+        return false;
+    }
+    Vec3 intersection_point = ray.origin + ray.direction * t;
+    if (size > intersection_point.distance(position) || size2 < intersection_point.distance(position)){
+        return false;
+    }
+
+    n = direction;
+
+    if (difference.dot(direction) > 0) {
+        n = {-direction.x, -direction.y, -direction. z};
+    }
+
+
+    return true;
 }
 
 

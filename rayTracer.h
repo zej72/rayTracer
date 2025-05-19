@@ -68,13 +68,14 @@ public:
     Vec3 position;
     Vec3 direction;
     float size;
+    float size2;
     virtual bool intersect(const Ray ray, float& t, Vec3& n) const = 0;
     virtual ~SceneObject(){}
 };
 
 class Plane : public virtual SceneObject{
 public:
-    Plane(Vec3 p, Vec3 n);
+    Plane(Vec3 p, Vec3 n, float s);
 
     bool intersect(const Ray ray, float& t, Vec3& n) const;
 };
@@ -82,6 +83,13 @@ public:
 class Sphere : public virtual SceneObject{
 public:
     Sphere(Vec3 c, float r);
+
+    bool intersect(const Ray ray, float& t, Vec3& n) const;
+};
+
+class Ring : public virtual SceneObject{
+public:
+    Ring(Vec3 c, Vec3 n, float in_s, float out_s);
 
     bool intersect(const Ray ray, float& t, Vec3& n) const;
 };

@@ -10,7 +10,7 @@ int main()
     rayTracer.skip_cout = false; // display only telemetry
     rayTracer.frame_count = 4500; // starting position (imo 4500 to 6000 looks great)
 
-    rayTracer.camera.position = {0, 0, 0};
+    rayTracer.camera.position = {3, 0, 0};
     rayTracer.camera.fov = 100;
     rayTracer.camera.up = {0,1,0};
 
@@ -18,22 +18,18 @@ int main()
     rayTracer.scene.objects.push_back( new Sphere({0,0,0}, 1.5));
     rayTracer.scene.objects[0]->ANSI = "31;1"; // set to red and bold
 
-    rayTracer.scene.objects.push_back( new Sphere({0,0,0}, 1));
+    //rayTracer.scene.objects.push_back( new Sphere({0,0,0}, 1));
+    rayTracer.scene.objects.push_back( new Ring({0,0,0}, {1,4,0}, 2, 3));
+
 
     // setup light source
-    rayTracer.sun = {10, 10, 0};
+    rayTracer.sun = {10, 5, 0};
 
     while (true){
         // interact with scene and camera
         rayTracer.camera.position.x = sin((double)rayTracer.frame_count / 750.0) * 4;
         rayTracer.camera.position.z = cos((double)rayTracer.frame_count / 750.0) * 4;
         rayTracer.camera.direction = rayTracer.camera.position.pointTo({0, 0, 0});
-
-        rayTracer.scene.objects[0]->position.y = cos((double)rayTracer.frame_count / 300.0 + 3.1415) * 1;
-        rayTracer.scene.objects[0]->position.x = sin((double)rayTracer.frame_count / 300.0 + 3.1415) * 1;
-
-        rayTracer.scene.objects[1]->position.y = cos((double)rayTracer.frame_count / 300.0) * 2.5;
-        rayTracer.scene.objects[1]->position.x = sin((double)rayTracer.frame_count / 300.0) * 2.5;
 
         // top text
         rayTracer.render();

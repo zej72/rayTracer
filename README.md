@@ -1,6 +1,6 @@
 Download binary from releases 
-'chmod +x rayTracer
-./rayTracer'
+'chmod +x rayTracer'
+./rayTracer''
 
 to try it yourself clone the source code and compile it using `g++  main.cpp rayTracer.cpp` and then run it with `./a.out` 
 

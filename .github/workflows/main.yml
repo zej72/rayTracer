@@ -11,7 +11,9 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4 # Pobranie kodu z repozytorium
+      uses: actions/checkout@v4
+      with:
+        path: . # Klonuje repozytorium bezpośrednio do katalogu roboczego
 
     - name: Install build tools and dependencies
       run: |

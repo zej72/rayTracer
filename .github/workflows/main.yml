@@ -18,23 +18,20 @@ jobs:
     - name: Install build tools and dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake libglm-dev # Instalacja CMake i podstawowych narzędzi do kompilacji oraz biblioteki GLM
+        sudo apt-get install -y build-essential libglm-dev # Instalacja g++ i podstawowych narzędzi do kompilacji oraz biblioteki GLM
         # Jeśli Twój projekt używa innych bibliotek (np. Raylib), dodaj je tutaj:
         # sudo apt-get install -y libraylib-dev
 
-    - name: Configure CMake and Build RayTracer
+    - name: Compile the RayTracer with g++
       run: |
-        # Tworzy katalog 'build' i konfiguruje CMake, wskazując bieżący katalog jako źródłowy (-S .)
-        # a 'build' jako katalog do kompilacji (-B build)
-        cmake -S . -B build
-        # Kompiluje projekt w katalogu 'build' w konfiguracji Release
-        cmake --build build --config Release
-        # Skompilowany plik wykonywalny 'rayTracer' będzie znajdował się w katalogu 'build/'
+        mkdir -p build # Tworzy katalog 'build' jeśli nie istnieje
+        # Kompiluje program używając g++ i umieszcza plik wykonywalny w katalogu 'build'
+        # Dodaj tutaj wszelkie flagi kompilatora, których używasz (np. -std=c++17 -O3)
+        g++ -o build/rayTracer main.cpp rayTracer.cpp
 
     - name: Run tests (optional)
       run: |
-        # Jeśli masz testy jednostkowe w swoim projekcie (np. skonfigurowane w CMake),
-        # możesz je tutaj uruchomić po pomyślnej kompilacji
+        # Jeśli masz testy jednostkowe w swoim projekcie, możesz je tutaj uruchomić po pomyślnej kompilacji
         # ./build/rayTracer_tests # Przykładowa komenda do uruchomienia testów
 
     - name: Upload artifact (optional)

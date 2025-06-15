@@ -1,4 +1,4 @@
-name: Build RayTracer
+name: Build RayTracer and Create Release # Nowa nazwa workflow
 
 on:
   push:
@@ -6,45 +6,82 @@ on:
       - master # Workflow uruchomi się po pushu do gałęzi master
 
 jobs:
-  build:
+  build-linux: # Pierwsze zadanie: kompilacja dla Linuxa
     runs-on: ubuntu-latest # Używamy maszyny wirtualnej Ubuntu
-    permissions:
-      contents: write
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         path: . # Klonuje repozytorium bezpośrednio do katalogu roboczego
 
-    - name: Install build tools and dependencies
+    - name: Install build tools and dependencies (Linux)
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential libglm-dev # Instalacja g++ i podstawowych narzędzi do kompilacji oraz biblioteki GLM
-        # Jeśli Twój projekt używa innych bibliotek (np. Raylib), dodaj je tutaj:
+        # Jeśli Twój projekt używa innych bibliotek (np. Raylib), dodaj je tutaj dla Linuxa:
         # sudo apt-get install -y libraylib-dev
 
-    - name: Compile the RayTracer with g++
+    - name: Compile the RayTracer with g++ (Linux)
       run: |
-        mkdir -p build # Tworzy katalog 'build' jeśli nie istnieje
-        # Kompiluje program używając g++ i umieszcza plik wykonywalny w katalogu 'build'
-        # Dodaj tutaj wszelkie flagi kompilatora, których używasz (np. -std=c++17 -O3)
-        g++ -o build/rayTracer main.cpp rayTracer.cpp
+        mkdir -p build_linux # Tworzy katalog 'build_linux' dla binarki Linuxa
+        # Kompiluje program używając g++ i umieszcza plik wykonywalny w katalogu 'build_linux'
+        # Pamiętaj o dodaniu wszelkich flag kompilatora, których używasz (np. -std=c++17 -O3 -L/usr/lib -lraylib)
+        g++ -o build_linux/rayTracer main.cpp rayTracer.cpp
 
-    - name: Run tests (optional)
-      run: |
-        # Jeśli masz testy jednostkowe w swoim projekcie, możesz je tutaj uruchomić po pomyślnej kompilacji
-        # ./build/rayTracer_tests # Przykładowa komenda do uruchomienia testów
-
-    - name: Upload artifact (optional)
-      # Ten krok jest opcjonalny, ale zalecany, jeśli chcesz, aby skompilowany plik
-      # był dostępny do pobrania z podsumowania przebiegu workflow.
-      # Zwróć uwagę, że akcja 'Upload Release Asset' również przesyła plik do wydania.
+    - name: Upload Linux binary artifact # Przesyła skompilowany plik Linux jako artefakt
       uses: actions/upload-artifact@v4
       with:
-        name: rayTracer-binary
-        path: build/rayTracer # Ścieżka do skompilowanej binarki w katalogu 'build'
+        name: rayTracer-linux # Nazwa artefaktu
+        path: build_linux/rayTracer # Ścieżka do skompilowanej binarki dla Linuxa
 
-    - name: Create Release
+  build-windows: # Drugie zadanie: kompilacja dla Windowsa
+    runs-on: windows-latest # Używamy maszyny wirtualnej Windows
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        path: . # Klonuje repozytorium bezpośrednio do katalogu roboczego
+
+    - name: Compile the RayTracer with g++ (Windows)
+      # Na Windowsie, g++ jest często dostępne z MinGW/MSYS2, które jest preinstalowane na runnerach.
+      # Jeśli Twoje biblioteki (np. GLM, Raylib) wymagają specjalnej konfiguracji na Windowsie,
+      # może być konieczne dodanie dodatkowych kroków do ich instalacji/konfiguracji (np. Chocolatey, vcpkg).
+      run: |
+        mkdir -p build_windows # Tworzy katalog 'build_windows' dla binarki Windowsa
+        # Kompiluje program używając g++ i umieszcza plik wykonywalny w katalogu 'build_windows'
+        # Pamiętaj o dodaniu wszelkich flag kompilatora specyficznych dla Windowsa
+        # (np. -std=c++17 -O3 -static -L"C:/path/to/raylib/lib" -lraylib)
+        g++ -o build_windows/rayTracer.exe main.cpp rayTracer.cpp
+      shell: bash # Używamy bash, aby komendy były spójne z Linuxem, zwłaszcza 'mkdir -p'
+
+    - name: Upload Windows binary artifact # Przesyła skompilowany plik Windows jako artefakt
+      uses: actions/upload-artifact@v4
+      with:
+        name: rayTracer-windows # Nazwa artefaktu
+        path: build_windows/rayTracer.exe # Ścieżka do skompilowanej binarki dla Windowsa
+
+  create-release-and-upload-assets: # Trzecie zadanie: tworzenie wydania i przesyłanie zasobów
+    runs-on: ubuntu-latest # Ten job może działać na dowolnej platformie, np. Ubuntu
+    needs: [build-linux, build-windows] # Ten job uruchomi się tylko po pomyślnym zakończeniu obu zadań build
+    permissions:
+      contents: write # Nadaj uprawnienia do zapisu zawartości repozytorium (wymagane do tworzenia wydania)
+
+    steps:
+    - name: Download Linux binary artifact # Pobiera artefakt z binarką Linux
+      uses: actions/download-artifact@v4
+      with:
+        name: rayTracer-linux
+        path: ./artifacts/linux # Ścieżka, do której zostanie pobrany artefakt Linux
+
+    - name: Download Windows binary artifact # Pobiera artefakt z binarką Windows
+      uses: actions/download-artifact@v4
+      with:
+        name: rayTracer-windows
+        path: ./artifacts/windows # Ścieżka, do której zostanie pobrany artefakt Windows
+
+    - name: Create Release # Tworzy nowe wydanie na GitHubie
       id: create_release # ID tego kroku do odwoływania się do jego wyjść
       uses: actions/create-release@v1
       env:
@@ -54,17 +91,28 @@ jobs:
         release_name: Release v${{ github.run_number }} # Nazwa wydania
         body: | # Opis wydania
           Automatyczne wydanie wygenerowane przez GitHub Actions.
+          Binarki dla systemów Linux i Windows.
           Commit: ${{ github.sha }}
-          # Możesz dodać więcej szczegółów, np. changelog, z innych źródeł
+          # Możesz dodać więcej szczegółów, np. changelog z commita
         draft: false # Wydanie zostanie od razu opublikowane (nie jako szkic)
         prerelease: false # To nie jest wydanie pre-release
 
-    - name: Upload Release Asset
+    - name: Upload Linux Release Asset # Przesyła binarkę Linux do wydania
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} # URL do przesyłania plików do wydania
-        asset_path: build/rayTracer # Ścieżka do skompilowanej binarki
-        asset_name: rayTracer-v${{ github.run_number }}-linux # Nazwa pliku w wydaniu (z sufiksem OS)
-        asset_content_type: application/octet-stream # Typ MIME pliku binarnego
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/linux/rayTracer # Ścieżka do pobranej binarki Linux
+        asset_name: rayTracer-v${{ github.run_number }}-linux # Nazwa pliku w wydaniu
+        asset_content_type: application/octet-stream
+
+    - name: Upload Windows Release Asset # Przesyła binarkę Windows do wydania
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/windows/rayTracer.exe # Ścieżka do pobranej binarki Windows
+        asset_name: rayTracer-v${{ github.run_number }}-windows.exe # Nazwa pliku w wydaniu
+        asset_content_type: application/octet-stream

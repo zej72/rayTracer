@@ -8,7 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest # Używamy maszyny wirtualnej Ubuntu
-
+    permissions:
+      contents: write
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4

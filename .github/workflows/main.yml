@@ -1,0 +1,64 @@
+name: Build RayTracer
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies (jeśli są potrzebne, np. OpenGL, glm itp.)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libglm-dev # Dostosuj do potrzeb
+
+    - name: Compile the RayTracer
+      run: |
+        mkdir build
+        cd build
+        cmake ..
+        make
+        # Pamiętaj, że skompilowany plik wykonywalny znajdzie się w 'build/rayTracer' (jeśli nazwa binarki to 'rayTracer')
+        # Upewnij się, że ten plik jest dostępny w późniejszych krokach, np. poprzez kopiowanie go do katalogu głównego lub użycie go z 'build/'
+
+    - name: Run tests (opcjonalnie)
+      run: |
+        # Jeśli masz testy, możesz je tutaj uruchomić
+        # ./build/rayTracer_tests
+
+    - name: Upload artifact (optional, but recommended if you want to attach the binary to the release)
+      uses: actions/upload-artifact@v4
+      with:
+        name: rayTracer-binary
+        path: build/rayTracer # Zmień na ścieżkę do Twojej skompilowanej binarki
+
+    - name: Create Release
+      id: create_release # Identyfikator kroku, aby można było odwołać się do jego danych wyjściowych
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Dostęp do tokena GitHub
+      with:
+        tag_name: v${{ github.run_number }} # Nazwa tagu, np. v1, v2. Możesz użyć 'github.sha' dla hasha commita.
+        release_name: Release v${{ github.run_number }} # Nazwa wydania
+        body: |
+          Automatyczne wydanie wygenerowane przez GitHub Actions.
+          Commit: ${{ github.sha }}
+          # Dodaj tutaj więcej szczegółów, jeśli chcesz, np. changelog z commita
+        draft: false # Czy wydanie ma być szkicem
+        prerelease: false # Czy to jest wydanie pre-release
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }} # URL do przesyłania plików do wydania
+        asset_path: build/rayTracer # Zmień na ścieżkę do Twojej skompilowanej binarki
+        asset_name: rayTracer-v${{ github.run_number }} # Nazwa pliku w wydaniu
+        asset_content_type: application/octet-stream # Typ MIME pliku

@@ -1,7 +1,70 @@
+name: Build RayTracer and Create Release
+
 on:
   push:
     branches:
       - master
+
+jobs: # <--- TEN KLUCZ JEST KLUCZOWY I MUSI BYĆ!
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: .
+
+      - name: Install build tools and dependencies (Linux)
+        run: |
+          sudo apt-get update
+          # Zainstaluj cmake i build-essential (dla make/g++) oraz wymagane biblioteki
+          sudo apt-get install -y cmake build-essential libglm-dev libx11-dev libglu1-mesa-dev freeglut3-dev libpthread-stubs0-dev
+
+      - name: Compile the RayTracer with CMake (Linux)
+        run: |
+          mkdir -p build_linux # Utwórz katalog do kompilacji
+          cd build_linux
+          cmake ..             # Skonfiguruj projekt z CMake
+          make                 # Skompiluj projekt za pomocą make
+
+      - name: Upload Linux binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rayTracer-linux
+          path: build_linux/rayTracer # Ścieżka do skompilowanego pliku po CMake/make
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: .
+
+      - name: Setup MSYS2 and Install build tools (Windows)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64 # Określa środowisko MSYS2 (MinGW 64-bit)
+          update: true    # Uruchamia pacman -Syu (aktualizuje bazę pakietów)
+          # Zainstaluj cmake, gcc/g++ i wymagane biblioteki (mingw-w64-x86_64-glm, freeglut, pthread itp.)
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-xorg-server-devel mingw-w64-x86_64-freeglut mingw-w64-x86_64-glm mingw-w64-x86_64-pthreads
+
+      - name: Compile the RayTracer with CMake (Windows)
+        shell: bash # Upewnij się, że używasz basha z MSYS2
+        run: |
+          mkdir -p build_windows # Utwórz katalog do kompilacji
+          cd build_windows
+          cmake ..             # Skonfiguruj projekt z CMake
+          make                 # Skompiluj projekt za pomocą make
+
+      - name: Upload Windows binary artifact
+        uses: actions/upload-artifact@v4 # Poprawione na upload-artifact
+        with:
+          name: rayTracer-windows
+          path: build_windows/rayTracer.exe
+
   create-release-and-upload-assets:
     runs-on: ubuntu-latest
     needs: [build-linux, build-windows]
@@ -25,11 +88,14 @@ on:
         id: create_release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: <span class="math-inline">\{\{ secrets\.GITHUB\_TOKEN \}\}
-with\:
-tag\_name\: v</span>{{ github.run_number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # <--- Usunięte znaczniki <span>
+        with:
+          tag_name: v${{ github.run_number }}
           release_name: Release v${{ github.run_number }}
           body: |
+            Automatyczne wydanie wygenerowane przez GitHub Actions.
+            Binarki dla systemów Linux i Windows.
+            Commit: ${{ github.sha }}
           draft: false
           prerelease: false
 
@@ -38,17 +104,17 @@ tag\_name\: v</span>{{ github.run_number }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: <span class="math-inline">\{\{ steps\.create\_release\.outputs\.upload\_url \}\}
-asset\_path\: \./artifacts/linux/rayTracer
-asset\_name\: rayTracer\-v</span>{{ github.run_number }}-linux
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # <--- Usunięte znaczniki <span>
+          asset_path: ./artifacts/linux/rayTracer
+          asset_name: rayTracer-v${{ github.run_number }}-linux
           asset_content_type: application/octet-stream
 
       - name: Upload Windows Release Asset
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@v1 # <--- Ukośnik zamiast dwukropka, tak jak wcześniej poprawialiśmy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: <span class="math-inline">\{\{ steps\.create\_release\.outputs\.upload\_url \}\}
-asset\_path\: \./artifacts/windows/rayTracer\.exe
-asset\_name\: rayTracer\-v</span>{{ github.run_number }}-windows.exe
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # <--- Usunięte znaczniki <span>
+          asset_path: ./artifacts/windows/rayTracer.exe
+          asset_name: rayTracer-v${{ github.run_number }}-windows.exe
           asset_content_type: application/octet-stream

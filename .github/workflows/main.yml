@@ -10,57 +10,60 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        path: .
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: .
 
-    - name: Install build tools and dependencies (Linux)
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libglm-dev
+      - name: Install build tools and dependencies (Linux)
+        run: |
+          sudo apt-get update
+          # Zainstaluj cmake i build-essential (dla make/g++) oraz wymagane biblioteki
+          sudo apt-get install -y cmake build-essential libglm-dev libx11-dev libglu1-mesa-dev freeglut3-dev libpthread-stubs0-dev
 
-    - name: Compile the RayTracer with g++ (Linux)
-      run: |
-        mkdir -p build_linux
-        g++ -o build_linux/rayTracer main.cpp rayTracer.cpp
+      - name: Compile the RayTracer with CMake (Linux)
+        run: |
+          mkdir -p build_linux # Utwórz katalog do kompilacji
+          cd build_linux
+          cmake ..             # Skonfiguruj projekt z CMake
+          make                 # Skompiluj projekt za pomocą make
 
-    - name: Upload Linux binary artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: rayTracer-linux
-        path: build_linux/rayTracer
+      - name: Upload Linux binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rayTracer-linux
+          path: build_linux/rayTracer # Ścieżka do skompilowanego pliku po CMake/make
 
   build-windows:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        path: .
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: .
 
-    - name: Setup MSYS2 and Install GCC (Windows)
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64 # Określa środowisko MSYS2 (MinGW 64-bit)
-        update: true # Uruchamia pacman -Syu (aktualizuje bazę pakietów)
-        install: mingw-w64-x86_64-gcc # Instaluje g++ dla 64-bitowego Windowsa
-      # Jeśli Twój projekt używa innych bibliotek (np. GLM, Raylib) w wersji skompilowanej,
-      # musisz je dodać do listy 'install' lub zainstalować w osobnym kroku za pomocą pacman.
+      - name: Setup MSYS2 and Install build tools (Windows)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64 # Określa środowisko MSYS2 (MinGW 64-bit)
+          update: true    # Uruchamia pacman -Syu (aktualizuje bazę pakietów)
+          # Zainstaluj cmake, gcc/g++ i wymagane biblioteki (mingw-w64-x86_64-glm, freeglut, pthread itp.)
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-xorg-server-devel mingw-w64-x86_64-freeglut mingw-w64-x86_64-glm mingw-w64-x86_64-pthreads
 
-    - name: Compile the RayTracer with g++ (Windows)
-      run: |
-        mkdir -p build_windows
-        g++ -o build_windows/rayTracer.exe main.cpp rayTracer.cpp
-      # Nie ma potrzeby jawnego określania 'shell: bash' tutaj,
-      # ponieważ akcja msys2/setup-msys2@v2 ustawia odpowiednie środowisko.
+      - name: Compile the RayTracer with CMake (Windows)
+        shell: bash # Upewnij się, że używasz basha z MSYS2
+        run: |
+          mkdir -p build_windows # Utwórz katalog do kompilacji
+          cd build_windows
+          cmake ..             # Skonfiguruj projekt z CMake
+          make                 # Skompiluj projekt za pomocą make
 
-    - name: Upload Windows binary artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: rayTracer-windows
-        path: build_windows/rayTracer.exe
+      - name: Upload Windows binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rayTracer-windows
+          path: build_windows/rayTracer.exe # Ścieżka do skompilowanego pliku po CMake/make
 
   create-release-and-upload-assets:
     runs-on: ubuntu-latest
@@ -69,49 +72,49 @@ jobs:
       contents: write
 
     steps:
-    - name: Download Linux binary artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: rayTracer-linux
-        path: ./artifacts/linux
+      - name: Download Linux binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rayTracer-linux
+          path: ./artifacts/linux
 
-    - name: Download Windows binary artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: rayTracer-windows
-        path: ./artifacts/windows
+      - name: Download Windows binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rayTracer-windows
+          path: ./artifacts/windows
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ github.run_number }}
-        release_name: Release v${{ github.run_number }}
-        body: |
-          Automatyczne wydanie wygenerowane przez GitHub Actions.
-          Binarki dla systemów Linux i Windows.
-          Commit: ${{ github.sha }}
-        draft: false
-        prerelease: false
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          body: |
+            Automatyczne wydanie wygenerowane przez GitHub Actions.
+            Binarki dla systemów Linux i Windows.
+            Commit: ${{ github.sha }}
+          draft: false
+          prerelease: false
 
-    - name: Upload Linux Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./artifacts/linux/rayTracer
-        asset_name: rayTracer-v${{ github.run_number }}-linux
-        asset_content_type: application/octet-stream
+      - name: Upload Linux Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/linux/rayTracer
+          asset_name: rayTracer-v${{ github.run_number }}-linux
+          asset_content_type: application/octet-stream
 
-    - name: Upload Windows Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./artifacts/windows/rayTracer.exe
-        asset_name: rayTracer-v${{ github.run_number }}-windows.exe
-        asset_content_type: application/octet-stream
+      - name: Upload Windows Release Asset
+        uses: actions:upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/windows/rayTracer.exe
+          asset_name: rayTracer-v${{ github.run_number }}-windows.exe
+          asset_content_type: application/octet-stream

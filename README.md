@@ -1,8 +1,4 @@
-Download binary from releases 
-
-or
-
-clone this repo and run `build_and_run.sh` 
+clone this repo and run `g++ main.cpp rayTracer.cpp` 
 
 if it looks wrong you probably have too high resolution, try maximasing the window and scaling down the font or change the resolution in **main.cpp** (line 7 and 8)
 

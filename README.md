@@ -9,9 +9,9 @@ if you want to play with some parameters, all of them are in main.cpp
 ![here are codes for ANSI coloring and other effects](https://stackoverflow.com/questions/4842424/list-of-ansi-color-escape-sequences)
 
 here are all scene objects:
-Plane(Vec3 position, Vec3 direction, float size)
-Sphere(Vec3 position, float radius)
-Ring(Vec3 position, Vec3 direction, float inner_radius, float outer_radius)
+- Plane(Vec3 position, Vec3 direction, float size)
+- Sphere(Vec3 position, float radius)
+- Ring(Vec3 position, Vec3 direction, float inner_radius, float outer_radius)
 
 you can animate any parameters in the main loop inside **main.cpp**
 

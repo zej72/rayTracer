@@ -208,22 +208,24 @@ bool Ring::intersect(const Ray ray, float& t, Vec3& n) const{
 }
 
 
-bool Scene::intersect(const Ray& ray, float& closestT, Vec3& intersection_position, Vec3& normal, string& ANSI, bool shadow_render) const {
-    closestT = std::numeric_limits<float>::max();
-    bool hit = false;
+bool Scene::intersect(Render_data &data) const {
+  float closest_t = std::numeric_limits<float>::max();
+  bool hit = false;
+  float t;
+  Vec3 n;
 
-    for (const auto& obj : objects) {
-        float t;
-        Vec3 n;
-        if (obj->intersect(ray, t, n) && t < closestT && !(shadow_render && !obj->cast_shadow)) {
-            closestT = t;
-            hit = true;
-            intersection_position = ray.origin + ray.direction * closestT;
-            normal = n;
-            ANSI = obj->ANSI;
-        }
+  for (const auto &obj : objects) {
+    if (obj->intersect(data.ray, t, n) && t < closest_t &&
+        !(data.shadow_rendering && !obj->cast_shadow)) {
+      closest_t = t;
+      hit = true;
+      data.point = data.ray.origin + data.ray.direction * closest_t;
+      data.normal = n;
+      data.ANSI = obj->ANSI;
+      data.distance = closest_t;
     }
-    return hit;
+  }
+  return hit;
 }
 
 
@@ -304,61 +306,55 @@ void RayTracer::render(){
     this->render_time = chrono::duration_cast<chrono::nanoseconds> (end - begin).count() / 1000000.0;
 }
 
-string RayTracer::main(int start, int end){
-    int color;
-    Vec3 intersection_point;
-    Vec3 normal;
-    Ray ray;
-    bool ray_collided;
-    float distance;
-    string buffer;
-    string ANSI;
-    string last_ANSI;
-    string GOD_HELP;
-    bool shadow;
+string RayTracer::main(int start, int end) {
+  bool ray_collided;
+  string buffer;
+  string last_ANSI;
+  Render_data data;
 
-    for(int y = start; y < end; ++y) {
-        for(int x = 0; x < this->width*2; ++x) {
-            // main render code. edit to your liking C:
-            color = 0;
-            ANSI = "";
+  for (int y = start; y < end; ++y) {
+    for (int x = 0; x < this->width * 2; ++x) {
+      // main render code. edit to your liking C:
+      data.color = 0;
+      data.ANSI = "";
 
-            ray = this->camera.getRay((float)x/2.0f, y, this->width, this->height);
+      data.ray =
+          this->camera.getRay((float)x / 2.0f, y, this->width, this->height);
 
-            shadow = false;
-            ray_collided = this->scene.intersect(ray, distance, intersection_point, normal, ANSI, shadow);
-            if (ray_collided){
-                // dither effect
-                color = (x%4) + 4;
+      data.shadow_rendering = false;
+      ray_collided = this->scene.intersect(data);
+      if (ray_collided) {
+        // dither effect
+        data.color = (x % 4) + 4;
 
-                color = (int)round((float) color * cos(normal.angle(intersection_point.pointTo(this->sun))));
+        data.color =
+            (int)round((float)data.color *
+                       cos(data.normal.angle(data.point.pointTo(this->sun))));
 
-                // ray trace shadows
-                shadow = true;
-                ray = {intersection_point, intersection_point.pointTo(this->sun)};
-                ray_collided = this->scene.intersect(ray, distance, intersection_point, normal, GOD_HELP, shadow);
-                ray_collided = ray.origin.distance(this->sun) > distance;
-                if (ray_collided && false){ // remove "&& false" for black shadows
-                    color = 0;
-                }
-                else if (ray_collided && ANSI == ""){
-                    ANSI = "2";
-                }
-                else if (ray_collided){
-                    ANSI += ";2";
-                }
-            }
-            if (ANSI != last_ANSI){
-                buffer += "\033[0m";
-            }
-            if (ANSI != ""){
-                buffer += "\033[" + ANSI + "m";
-            }
-            last_ANSI = ANSI;
-            buffer += this->pixel_values[clamp(color,0,4)];
+        // ray trace shadows
+        data.shadow_rendering = true;
+        data.ray = {data.point, data.point.pointTo(this->sun)};
+        ray_collided = this->scene.intersect(data);
+        ray_collided = data.ray.origin.distance(this->sun) > data.distance;
+        if (ray_collided && false) { // remove "&& false" for black shadows
+          data.color = 0;
+        } else if (ray_collided && data.ANSI == "") {
+          data.ANSI = "2";
+        } else if (ray_collided) {
+          data.ANSI += ";2";
         }
-        buffer += "\n";
+      }
+      if (data.ANSI != last_ANSI) {
+        buffer += "\033[0m";
+      }
+      if (data.ANSI != "") {
+        buffer += "\033[" + data.ANSI + "m";
+      }
+      last_ANSI = data.ANSI;
+      buffer += this->pixel_values[clamp(data.color, 0, 4)];
     }
-    buffer += "\033[0m";
-    return buffer;
+    buffer += "\n";
+  }
+  buffer += "\033[0m";
+  return buffer;
 }

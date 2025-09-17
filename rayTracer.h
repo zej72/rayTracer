@@ -94,12 +94,23 @@ public:
     bool intersect(const Ray ray, float& t, Vec3& n) const;
 };
 
+struct Render_data{
+public:
+	Ray ray;
+	Vec3 point;
+	Vec3 normal;
+	float distance;
+	string ANSI;
+	bool shadow_rendering;
+	int color;
+};
+
 class Scene {
 public:
     vector<SceneObject*> objects;
 
-    // ik theres better way to pass all of the arguments but i dont care
-    bool intersect(const Ray& ray, float& closestT, Vec3& intersection_position, Vec3& normal, string& ANSI, bool shadow_render) const;
+    // nvm it was so shit i couldnt leave it like this
+    bool intersect(Render_data& data) const;
 };
 
 class RayTracer{

@@ -28,7 +28,7 @@ if it looks wrong you probably have too high resolution. try maximasing the wind
 
 if you want to play with some parameters, all of them are in main.cpp
 
-![here are codes for ANSI coloring and other effects](https://stackoverflow.com/questions/4842424/list-of-ansi-color-escape-sequences)
+[here are codes for ANSI coloring and other effects](https://stackoverflow.com/questions/4842424/list-of-ansi-color-escape-sequences)
 
 pro tips
 -

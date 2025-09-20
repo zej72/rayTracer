@@ -21,8 +21,8 @@ i intend on adressing all of those limitations. except post processing idk how t
 buliding
 -
 1. clone this repo
-2. compile with `g++ main.cpp rayTracer.cpp` 
-3. run `./a.out`
+2. build with `make` 
+3. run `./rayTracer` in /build
 
 if it looks wrong you probably have too high resolution. try maximasing the window and scaling down the font or change the resolution in `main.cpp` (line 7 and 8)
 

@@ -6,7 +6,9 @@ OUT = build
 
 $(TARGET): $(OBJCS)
 	mkdir -p $(OUT)
-	$(CXX) $(SRCS) -o $(TARGET)
+	$(CXX) $(SRCS) -o ./$(OUT)/$(TARGET)
 
 clean:
-	rm $(TARGET)
+	rm -rf $(OUT)
+	mkdir -p $(OUT)
+	$(CXX) $(SRCS) -o ./$(OUT)/$(TARGET)

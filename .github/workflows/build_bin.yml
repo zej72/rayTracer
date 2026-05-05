@@ -3,7 +3,7 @@ name: Build RayTracer and Create Release
 on:
   push:
     branches:
-      - dev
+      - master
 
 jobs:
   build-linux:

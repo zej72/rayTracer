@@ -1,3 +1,6 @@
+![rayTracer_crt](https://github.com/user-attachments/assets/48df6ea0-d79f-4216-97e1-bfa36dca8887)
+```//frame from cool retro term```
+
 cpu rayTracing in pure c++ displayed in console using regular characters.
 
 features:
@@ -40,5 +43,4 @@ here are all scene objects for now:
 you can animate any parameters in the main loop inside `main.cpp`
 
 some terminals are better then others, i recommend something like kitty or ghosty becouse they are able to display high fps
-![rayTracer_crt](https://github.com/user-attachments/assets/48df6ea0-d79f-4216-97e1-bfa36dca8887)
-```//frame from cool retro term```
+

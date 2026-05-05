@@ -1,0 +1,87 @@
+name: Build RayTracer and Create Release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+
+      - name: Build
+        run: make
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rayTracer-linux
+          path: build/rayTracer
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-gcc make
+
+      - name: Build
+        shell: msys2 {0}
+        run: make
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rayTracer-windows
+          path: build/rayTracer.exe
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [build-linux, build-windows]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rayTracer-linux
+          path: ./artifacts/linux
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rayTracer-windows
+          path: ./artifacts/windows
+
+      - name: Restore executable bit on Linux binary
+        run: chmod +x ./artifacts/linux/rayTracer
+
+      - name: Create release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Release v${{ github.run_number }}
+          body: |
+            Automated release by GitHub Actions.
+            Linux and Windows binaries included.
+            Commit: ${{ github.sha }}
+          files: |
+            ./artifacts/linux/rayTracer
+            ./artifacts/windows/rayTracer.exe
